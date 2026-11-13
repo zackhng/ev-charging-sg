@@ -2,10 +2,12 @@ name: Collect EV charger availability
 
 on:
   schedule:
-    # every 30 minutes. GitHub runs this in UTC and may fire a few
-    # minutes late — that is fine, we aggregate to hourly anyway.
+    # BACKUP ONLY. GitHub's scheduler is best-effort and skips most of these.
+    # The real 30-min trigger is an external cron (cron-job.org) calling
+    # POST /repos/zackhng/ev-charging-sg/actions/workflows/collect.yml/dispatches
+    # Duplicate triggers are harmless: unchanged feeds are skipped.
     - cron: '9,39 * * * *'
-  workflow_dispatch:        # gives you a "Run workflow" button for testing
+  workflow_dispatch:        # external cron + the "Run workflow" button
 
 permissions:
   contents: write           # needed so the job can commit the data back
@@ -21,6 +23,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # check out the branch as it is NOW, not as it was when the run was
+          # queued — otherwise a queued run starts from stale data/.last_feed,
+          # re-writes rows, and its rebase can conflict on the .csv.gz
+          ref: ${{ github.ref_name }}
 
       - uses: actions/setup-python@v5
         with:
